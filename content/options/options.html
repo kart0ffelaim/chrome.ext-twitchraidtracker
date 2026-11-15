@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Raid Tracker Settings</title>
     <style>
         body {
@@ -25,6 +26,11 @@
         }
 
         input[type=checkbox] {
+            margin-right: 10px;
+        }
+
+        input[type="number"] {
+            width: 60px;
             margin-right: 10px;
         }
 
@@ -176,11 +182,19 @@
 </label>
 <br/>
 <label>
+    <input id="show-badge" type="checkbox"> Show raid count of the viewed channel on the extension icon
+</label>
+<br/>
+<label>
     <input id="tooltip-item-number" min="1" type="number"> items in on-site tooltip
 </label>
 <br/>
 <label>
     <input id="overview-page-size" min="1" type="number"> items per page in overview
+</label>
+<br/>
+<label>
+    <input id="retention-months" min="0" type="number"> months until raids are deleted (0 = never)
 </label>
 <br/>
 <h3>Data Management</h3>

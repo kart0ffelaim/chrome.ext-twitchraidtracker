@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Raid Tracker</title>
     <!--suppress CssUnusedSymbol -->
     <style>
@@ -10,6 +11,51 @@
             padding: 10px;
             background-color: #1f1f23;
             color: #fff
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #9146FF;
+        }
+
+        .tabs button {
+            background: none;
+            color: #bbb;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .tabs button:hover:not(:disabled) {
+            background: #333;
+        }
+
+        .tabs button[aria-selected="true"] {
+            background: #9146FF;
+            color: white;
+        }
+
+        .channel-info {
+            border: 1px solid #9146FF;
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 12px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .channel-info .channel-name {
+            font-weight: bold;
+        }
+
+        .channel-info button {
+            margin-top: 6px;
+            padding: 4px 8px;
+            font-size: 11px;
         }
 
         .controls {
@@ -30,20 +76,38 @@
             border-bottom: 1px solid #e5e5e5;
             padding: 10px 0;
             font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
         }
 
         .raid-item:last-child {
             border-bottom: none;
         }
 
+        .raid-text {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        a {
+            color: #bf94ff;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
         .time {
             font-size: 11px;
-            color: #777;
+            color: #999;
             margin-top: 4px;
         }
 
         .passive-warning {
-            color: #bb2222;
+            color: #ff7a7a;
         }
 
         .pagination {
@@ -72,10 +136,108 @@
         button:hover:not(:disabled) {
             background: #772ce8;
         }
+
+        .delete-btn {
+            flex-shrink: 0;
+            padding: 4px 8px;
+            background: none;
+            color: #999;
+            font-size: 11px;
+        }
+
+        .delete-btn:hover:not(:disabled) {
+            background: #333;
+            color: #fff;
+        }
+
+        .delete-btn.armed, .delete-btn.armed:hover:not(:disabled) {
+            background: #822;
+            color: #fff;
+        }
+
+        .stat-tiles {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .stat-tile {
+            flex: 1;
+            background: #2a2a2e;
+            border-radius: 4px;
+            padding: 8px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #bbb;
+            margin-top: 2px;
+        }
+
+        h4 {
+            margin: 16px 0 6px 0;
+            font-size: 13px;
+        }
+
+        .bar-row {
+            display: grid;
+            grid-template-columns: 110px 1fr 32px;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            padding: 3px 0;
+        }
+
+        .bar-row:hover {
+            background: #2a2a2e;
+        }
+
+        .bar-label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .bar {
+            height: 8px;
+            min-width: 2px;
+            background: #9146FF;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .bar.empty {
+            background: none;
+        }
+
+        .bar-value {
+            text-align: right;
+            color: #bbb;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stats-empty {
+            font-size: 12px;
+            color: #bbb;
+        }
     </style>
 </head>
 <body>
-<!--<h3>Raid History</h3>-->
+<div class="tabs" role="tablist">
+    <button aria-selected="true" id="history-tab" role="tab">History</button>
+    <button aria-selected="false" id="stats-tab" role="tab">Stats</button>
+</div>
+
+<div class="channel-info" hidden id="channel-info">
+    <div><span class="channel-name" id="channel-info-name"></span></div>
+    <div id="channel-info-text"></div>
+    <button id="channel-info-filter">Show raids of this channel</button>
+</div>
+
 <div class="controls">
     <!--suppress HtmlFormInputWithoutLabel -->
     <input id="search-input" placeholder="Search channels..." type="text"/>
@@ -88,13 +250,17 @@
     </select>
 </div>
 
-<div id="raid-list">Loading...</div>
+<div id="history-view">
+    <div id="raid-list">Loading...</div>
 
-<div class="pagination">
-    <button id="prev-btn"><<</button>
-    <span id="page-info">1</span>
-    <button id="next-btn">>></button>
+    <div class="pagination">
+        <button id="prev-btn">&lt;&lt;</button>
+        <span id="page-info">1</span>
+        <button id="next-btn">&gt;&gt;</button>
+    </div>
 </div>
+
+<div hidden id="stats-view"></div>
 <script src="popup.js" type="module"></script>
 </body>
 </html>

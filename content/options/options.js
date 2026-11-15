@@ -1,4 +1,4 @@
-import {debugLog, option_defaults} from "../shared.js";
+import {debugLog, mergeRaids, option_defaults, sanitizeImportedRaids} from "../shared.js";
 
 const statusText = document.getElementById("status");
 
@@ -6,114 +6,72 @@ function clearStatusTextLater() {
     setTimeout(() => statusText.textContent = "", 2000);
 }
 
-const debugCheckbox = document.getElementById("debug-mode");
-chrome.storage.local.get(["debugMode"], (result) => {
-    debugLog('options.js:debugLog', `Loaded settings from storage`, result);
-    if (!result.debugMode) {
-        result.debugMode = option_defaults.debugMode;
-        chrome.storage.local.set(result).then(() => debugLog('options.js:tooltipItemNumber', "saved default value"));
-    }
-    debugCheckbox.checked = result.debugMode;
-});
-debugCheckbox.addEventListener("change", (e) => {
-    debugLog('options.js:debugLog', "received change event on debug checkbox", e);
-    const obj = {debugMode: e.target.checked};
-    chrome.storage.local.set(obj, () => {
-        debugLog('options.js:debugLog', `Saved settings to storage`, obj);
-        statusText.textContent = "Settings saved!";
-        clearStatusTextLater();
-    });
-});
+function showSavedStatus() {
+    statusText.textContent = "Settings saved!";
+    clearStatusTextLater();
+}
 
-const trackPassiveCheckbox = document.getElementById("track-passive");
-chrome.storage.local.get(["trackPassiveRaids"], (result) => {
-    debugLog('options.js:trackPassive', "Loaded settings from storage", result);
-    if (!result.trackPassiveRaids) {
-        result.trackPassiveRaids = option_defaults.trackPassiveRaids;
-        chrome.storage.local.set(result).then(() => debugLog("options.js:trackPassive", "saved default value"));
-    }
-    trackPassiveCheckbox.checked = result.trackPassiveRaids;
-});
-trackPassiveCheckbox.addEventListener("change", (e) => {
-    debugLog("options.js:trackPassive", "received change event on track passive raid checkbox", e);
-    const obj = {trackPassiveRaids: e.target.checked};
-    chrome.storage.local.set(obj, () => {
-        debugLog("options.js:debugLog", "saved settings to storage", obj);
-        statusText.textContent = "Settings saved!";
-        clearStatusTextLater();
+function bindCheckboxOption(elementId, optionName) {
+    const checkbox = document.getElementById(elementId);
+    chrome.storage.local.get([optionName], (result) => {
+        debugLog(`options.js:${optionName}`, "loaded settings from storage", result);
+        checkbox.checked = result[optionName] ?? option_defaults[optionName];
     });
-});
-
-const showPassiveOnTooltipCheckbox = document.getElementById("show-passive-tooltip");
-chrome.storage.local.get(["showPassiveRaidsOnTooltip"], (result) => {
-    debugLog("options.js:showPassivesTooltip", "Loaded settings from storage", result);
-    if (!result.showPassiveRaidsOnTooltip) {
-        result.showPassiveRaidsOnTooltip = option_defaults.showPassiveRaidsOnTooltip;
-        chrome.storage.local.set(result).then(() => debugLog("options.js:showPassivesTooltip", "saved default value"));
-    }
-    showPassiveOnTooltipCheckbox.checked = result.showPassiveRaidsOnTooltip;
-});
-showPassiveOnTooltipCheckbox.addEventListener("change", (e) => {
-    debugLog("options.js:showPassivesTooltip", "received change event on show passive raids on tooltip checkbox", e);
-    const obj = {showPassiveRaidsOnTooltip: e.target.checked};
-    chrome.storage.local.set(obj, () => {
-        debugLog("options.js:showPassivesTooltip", "saved settings to storage", obj);
-        statusText.textContent = "Settings saved!";
-        clearStatusTextLater();
-    });
-});
-
-const tooltipItemNumberElem = document.getElementById("tooltip-item-number");
-chrome.storage.local.get(["tooltipItemNumber"], (result) => {
-    debugLog('options.js:tooltipItemNumber', `loaded settings from storage`, result);
-    if (!result.tooltipItemNumber) {
-        result.tooltipItemNumber = option_defaults.tooltipItemNumber;
-        chrome.storage.local.set(result).then(() => debugLog('options.js:tooltipItemNumber', "saved default value"));
-    }
-    tooltipItemNumberElem.value = result.tooltipItemNumber;
-});
-tooltipItemNumberElem.addEventListener("change", (e) => {
-    const obj = {tooltipItemNumber: parseInt(e.target.value)};
-    if (obj.tooltipItemNumber < tooltipItemNumberElem.min) {
-        debugLog('options.js:tooltipItemNumber', `value ${obj.tooltipItemNumber} below threshold ${tooltipItemNumberElem.min} -> no save`);
-        statusText.textContent = `Tooltip item number < ${tooltipItemNumberElem.min}! Save failed!`;
-        tooltipItemNumberElem.value = tooltipItemNumberElem.min;
-        clearStatusTextLater();
-    } else {
+    checkbox.addEventListener("change", () => {
+        const obj = {[optionName]: checkbox.checked};
         chrome.storage.local.set(obj, () => {
-            debugLog('options.js:tooltipItemNumber', `Saved settings to storage:`, obj);
-            statusText.textContent = "Settings saved!";
-            clearStatusTextLater();
+            debugLog(`options.js:${optionName}`, "saved settings to storage", obj);
+            showSavedStatus();
         });
-    }
-});
-const overviewPageSizeElem = document.getElementById("overview-page-size");
-chrome.storage.local.get(["overviewPageSize"], (result) => {
-    debugLog('options.js:overviewPageSize', `loaded settings from storage`, result);
-    if (!result.overviewPageSize) {
-        result.overviewPageSize = option_defaults.overviewPageSize;
-        chrome.storage.local.set(result).then(() => debugLog('options.js:overviewPageSize', "saved default value"));
-    }
-    overviewPageSizeElem.value = result.overviewPageSize;
-});
-overviewPageSizeElem.addEventListener("change", (e) => {
-    const obj = {overviewPageSize: parseInt(e.target.value)};
-    if (obj.overviewPageSize < overviewPageSizeElem.min) {
-        debugLog('options.js:overviewPageSize', `value ${obj.overviewPageSize} below threshold ${overviewPageSizeElem.min} -> no save`);
-        statusText.textContent = `Tooltip item number < ${overviewPageSizeElem.min}! Save failed!`;
-        overviewPageSizeElem.value = overviewPageSizeElem.min;
-        clearStatusTextLater();
-    } else {
+    });
+}
+
+//confirmChange is optional: a function returning the question to ask before saving the value (or null to save without asking)
+function bindNumberOption(elementId, optionName, displayName, confirmChange) {
+    const input = document.getElementById(elementId);
+    const min = parseInt(input.min);
+    let savedValue = option_defaults[optionName];
+    chrome.storage.local.get([optionName], (result) => {
+        debugLog(`options.js:${optionName}`, "loaded settings from storage", result);
+        savedValue = result[optionName] ?? option_defaults[optionName];
+        input.value = savedValue;
+    });
+    input.addEventListener("change", async () => {
+        const value = input.value.trim() === "" ? NaN : Number(input.value);
+        if (!Number.isInteger(value) || value < min) {
+            debugLog(`options.js:${optionName}`, `value ${input.value} is not a whole number >= ${min} -> no save`);
+            statusText.textContent = `${displayName} must be a whole number >= ${min}! Save failed!`;
+            input.value = savedValue;
+            clearStatusTextLater();
+            return;
+        }
+        const question = confirmChange ? confirmChange(value) : null;
+        if (question && !await showConfirmationDialog(document.body, question)) {
+            debugLog(`options.js:${optionName}`, "User aborted");
+            input.value = savedValue;
+            return;
+        }
+        const obj = {[optionName]: value};
         chrome.storage.local.set(obj, () => {
-            debugLog('options.js:overviewPageSize', `Saved settings to storage`, obj);
-            statusText.textContent = "Settings saved!";
-            clearStatusTextLater();
+            debugLog(`options.js:${optionName}`, "saved settings to storage", obj);
+            savedValue = value;
+            showSavedStatus();
         });
-    }
+    });
+}
+
+bindCheckboxOption("debug-mode", "debugMode");
+bindCheckboxOption("track-passive", "trackPassiveRaids");
+bindCheckboxOption("show-passive-tooltip", "showPassiveRaidsOnTooltip");
+bindCheckboxOption("show-badge", "showBadge");
+bindNumberOption("retention-months", "retentionMonths", "Number of months", (months) => {
+    return months > 0 ? `Raids older than ${months} ${months === 1 ? "month" : "months"} are deleted now and in the future. Continue?` : null;
 });
+bindNumberOption("tooltip-item-number", "tooltipItemNumber", "Tooltip item number");
+bindNumberOption("overview-page-size", "overviewPageSize", "Overview page size");
 
 export function showConfirmationDialog(parentElement, message) {
-    debugLog("shared.js:confirmDialog", "showing confirm dialog", parentElement, message);
+    debugLog("options.js:confirmDialog", "showing confirm dialog", parentElement, message);
     const dialogElem = document.createElement("dialog");
     parentElement.appendChild(dialogElem);
 
@@ -130,11 +88,11 @@ export function showConfirmationDialog(parentElement, message) {
     cancelBtn.type = "reset";
     cancelBtn.textContent = "Cancel";
     dialogElem.appendChild(cancelBtn);
-    debugLog("shared.js:confirmDialog", "created dialog", dialogElem);
+    debugLog("options.js:confirmDialog", "created dialog", dialogElem);
 
     return new Promise((resolve) => {
         const finish = (result) => {
-            debugLog("shared.js:confirmDialog", `dialog result is ${result}`);
+            debugLog("options.js:confirmDialog", `dialog result is ${result}`);
             okBtn.removeEventListener("click", onOk);
             cancelBtn.removeEventListener("click", onCancel);
             dialogElem.close();
@@ -168,10 +126,33 @@ function createFileDialog(message) {
     return {dialogElem, messageElem, progressElem};
 }
 
+function addCloseButton(dialogElem, onClose) {
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "reset";
+    closeBtn.textContent = "Close";
+    dialogElem.appendChild(document.createElement("br"));
+    dialogElem.appendChild(closeBtn);
+    closeBtn.addEventListener("click", () => {
+        if (onClose) {
+            onClose();
+        }
+        dialogElem.close();
+        document.body.removeChild(dialogElem);
+    });
+}
+
+function finishFileDialog({dialogElem, messageElem, progressElem}, message, content, onClose) {
+    messageElem.textContent = message;
+    progressElem.classList.remove("loader");
+    progressElem.style.paddingTop = "";
+    progressElem.replaceChildren(content);
+    addCloseButton(dialogElem, onClose);
+}
+
 const importFileElem = document.getElementById("import-file");
 const importModeElem = document.getElementById("import-mode");
 const importBtn = document.getElementById("import-data");
-importBtn.addEventListener("click", () => {
+importBtn.addEventListener("click", async () => {
     debugLog('options.js:importData', `received click event on import btn`, importFileElem.files);
     const file = importFileElem.files[0];
     if (!file) {
@@ -180,80 +161,33 @@ importBtn.addEventListener("click", () => {
         clearStatusTextLater();
         return;
     }
+    const append = importModeElem.checked;
+    if (!append && !await showConfirmationDialog(document.body, "Importing without appending replaces all existing raid data. Continue?")) {
+        debugLog('options.js:importData', "User aborted");
+        return;
+    }
 
-    const {dialogElem, messageElem, progressElem} = createFileDialog("Importing data...");
-    const reader = new FileReader();
+    const fileDialog = createFileDialog("Importing data...");
+    try {
+        const {raids: importedRaids, skipped} = sanitizeImportedRaids(JSON.parse(await file.text()));
+        debugLog('options.js:importData', `parsed json, skipped ${skipped} invalid entries`, importedRaids);
 
-    reader.onload = (e) => {
-        debugLog('options.js:importData', `read file`, e);
-        try {
-            const importedRaids = JSON.parse(e.target.result);
-            debugLog('options.js:importData', "parsed json", importedRaids);
-            if (!Array.isArray(importedRaids)) {
-                debugLog('options.js:importData', "parsed data is not a valid raid");
-                // noinspection ExceptionCaughtLocallyJS
-                throw new Error("File contains invalid or corrupted data");
-            }
+        const result = await chrome.storage.local.get(["raids"]);
+        const oldRaids = append ? result.raids || [] : [];
+        debugLog('options.js:importData', `set base for import (appending? ${append})`, oldRaids);
+        const raids = mergeRaids(oldRaids, importedRaids);
 
-            chrome.storage.local.get(["raids"], (result) => {
-                debugLog('options.js:importData', `loaded raids from storage`, result);
-                let oldRaids = importModeElem.checked ? result.raids || [] : [];
-                debugLog('options.js:importData', `set base for import (appending? ${importModeElem.checked})`, oldRaids);
-                let raids = [...oldRaids, ...importedRaids];
-                debugLog('options.js:importData', "raids pre sort", raids);
-                raids.sort((raidA, raidB) => new Date(raidA.timestamp) - new Date(raidB.timestamp));
-                debugLog('options.js:importData', "raids post sort", raids);
-
-                raids = raids.filter((raid, idx, self) => {
-                    return self.findIndex(oRaid => (oRaid.uuid === raid.uuid)) === idx;
-                });
-                debugLog("filtered out")
-
-                chrome.storage.local.set({raids: raids}, () => {
-                    debugLog('options.js:importData', "new raid data saved", raids);
-                    setTimeout(() => {
-                        messageElem.textContent = "Import successful";
-                        progressElem.classList.remove("loader");
-                        progressElem.textContent = `Imported ${raids.length - oldRaids.length} raids out of ${importedRaids.length}. New total raids: ${raids.length}`;
-                        progressElem.style.paddingTop = "";
-
-                        const closeBtn = document.createElement("button");
-                        closeBtn.type = "reset";
-                        closeBtn.textContent = "Close";
-                        dialogElem.appendChild(document.createElement("br"));
-                        dialogElem.appendChild(closeBtn);
-                        closeBtn.addEventListener("click", () => {
-                            dialogElem.close();
-                            document.body.removeChild(dialogElem);
-                            debugLog('options.js:importData', "closing dialog");
-                        });
-                        debugLog('options.js:importData', "imported data");
-                    }, 3000);
-                });
-            });
-        } catch (err) {
-            debugLog("Caught error", err);
-            messageElem.textContent = "Import failed!";
-            progressElem.classList.remove("loader");
-            progressElem.textContent = `Error: ${err.message}`;
-            progressElem.style.paddingTop = "";
-
-            const closeBtn = document.createElement("button");
-            closeBtn.type = "reset";
-            closeBtn.textContent = "Close";
-            dialogElem.appendChild(document.createElement("br"));
-            dialogElem.appendChild(closeBtn);
-            closeBtn.addEventListener("click", () => {
-                dialogElem.close();
-                document.body.removeChild(dialogElem);
-                debugLog('options.js:importData', "closing error dialog");
-            });
-            debugLog('options.js:importData', "imported data failed");
+        await chrome.storage.local.set({raids: raids});
+        debugLog('options.js:importData', "new raid data saved", raids);
+        let summary = `Imported ${raids.length - oldRaids.length} raids out of ${importedRaids.length + skipped}. New total raids: ${raids.length}`;
+        if (skipped > 0) {
+            summary += ` (${skipped} invalid entries skipped)`;
         }
-    };
-
-    debugLog('options.js:importData', "reading json", file);
-    reader.readAsText(file);
+        finishFileDialog(fileDialog, "Import successful", summary);
+    } catch (err) {
+        debugLog('options.js:importData', "import failed", err);
+        finishFileDialog(fileDialog, "Import failed!", `Error: ${err.message}`);
+    }
 });
 
 const exportBtn = document.getElementById("export-data");
@@ -261,46 +195,28 @@ exportBtn.addEventListener("click", () => {
     debugLog('options.js:exportData', `received click event on export btn`);
     chrome.storage.local.get(["raids"], (result) => {
         debugLog('options.js:exportData', `loaded raids from storage`, result);
-        if (result.raids && result.raids.length < 1) {
+        if (!result.raids || result.raids.length < 1) {
             debugLog('options.js:exportData', "no raids to export");
             statusText.textContent = "No data to export available.";
             clearStatusTextLater();
             return;
         }
 
-        const {dialogElem, messageElem, progressElem} = createFileDialog("Exporting data...");
+        const fileDialog = createFileDialog("Exporting data...");
 
         const data = JSON.stringify(result.raids, null, 4);
-        debugLog('options.js:exportData', "converted to json", data);
         const dataBlob = new Blob([data], {type: "application/json"});
-        debugLog('options.js:exportData', "converted to blob", dataBlob);
         const url = URL.createObjectURL(dataBlob);
         debugLog('options.js:exportData', "created download link", url)
 
-        setTimeout(() => {
-            messageElem.textContent = "Download started...";
-            const dlLink = document.createElement("a");
-            dlLink.href = url;
-            dlLink.download = `raid_data_bkp_${new Date().toISOString().slice(0, 10)}.json`;
-            dlLink.textContent = `${dlLink.download}`;
-            progressElem.classList.remove("loader");
-            progressElem.appendChild(dlLink);
-            progressElem.style.paddingTop = "";
-            const closeBtn = document.createElement("button");
-            closeBtn.type = "reset";
-            closeBtn.textContent = "Close";
-            dialogElem.appendChild(document.createElement("br"));
-            dialogElem.appendChild(closeBtn);
-            closeBtn.addEventListener("click", () => {
-                URL.revokeObjectURL(url);
-                dialogElem.close();
-                document.body.removeChild(dialogElem);
-                debugLog('options.js:exportData', "closing dialog");
-            });
+        const dlLink = document.createElement("a");
+        dlLink.href = url;
+        dlLink.download = `raid_data_bkp_${new Date().toISOString().slice(0, 10)}.json`;
+        dlLink.textContent = dlLink.download;
+        finishFileDialog(fileDialog, "Download started...", dlLink, () => URL.revokeObjectURL(url));
 
-            dlLink.click();
-            debugLog('options.js:exportData', "exported data");
-        }, 3000);
+        dlLink.click();
+        debugLog('options.js:exportData', "exported data");
     });
 });
 
@@ -308,11 +224,11 @@ const clearBtn = document.getElementById("clear-btn");
 clearBtn.addEventListener("click", () => {
     debugLog("options.js:click-event-listener", "Got event on clear btn");
     (async () => {
-        if (!await showConfirmationDialog(clearBtn.parentElement, "Are you sure you want to delete everything?")) {
+        if (!await showConfirmationDialog(document.body, "Are you sure you want to delete everything?")) {
             debugLog("options.js:click-event-listener", "User aborted");
             return;
         }
-        debugLog("options.js:click-event-listener", "User confirmed deletion twice");
+        debugLog("options.js:click-event-listener", "User confirmed deletion");
         chrome.storage.local.set({raids: []}, () => {
             debugLog("options.js:click-event-listener", "Cleared all data");
             statusText.textContent = "All data erased!";
