@@ -5,7 +5,7 @@
         debugLog,
         saveRaid,
         channelFromUrl,
-        normalizeChannel,
+        parseRaidMessage,
         option_defaults
     } = await import(shared_js);
     debugLog("passive_raid_tracker.js", "imported functions");
@@ -13,9 +13,7 @@
     const observerParams = {childList: true, subtree: true};
     const maxFindChatTries = 10;
     const duplicateTimeframe = 60000;
-    //finds channel name from raid message and if it's a raid message
-    //a normal chat message starts with "<name>:", so it can not be used to fake a raid message
-    const raidMessagePattern = /^([^\s:<>]{1,50})\s+(is raiding with a party of|raidet mit einer Gruppe von)/i;
+    const userMessageSelector = ".chat-line__message";
 
     let trackingEnabled = option_defaults.trackPassiveRaids;
     let chatObserver = null;
@@ -26,11 +24,17 @@
         if (node.nodeType !== Node.ELEMENT_NODE) {
             return;
         }
-        const matchResult = (node.textContent || "").match(raidMessagePattern);
-        const raider = matchResult ? normalizeChannel(matchResult[1]) : null;
-        if (!raider) {
+        //messages written by users (also /me messages) are never raid messages, only notices created by twitch are
+        if (node.matches(userMessageSelector) || node.closest(userMessageSelector) || node.querySelector(userMessageSelector)) {
             return;
         }
+        //with debug mode enabled this shows the markup of every twitch notice, helpful to add support for other languages
+        debugLog("passive_raid_tracker.js:handleAddedNode", "twitch notice added to chat", node.textContent, node.outerHTML);
+        const raidMessage = parseRaidMessage(node.textContent);
+        if (!raidMessage) {
+            return;
+        }
+        const raider = raidMessage.raider;
         debugLog("passive_raid_tracker.js:handleAddedNode", "found raid message", raider, currentChannel);
 
         const recentKey = `${raider}|${currentChannel}`;
@@ -50,7 +54,7 @@
 
             debugLog("passive_raid_tracker.js:handleAddedNode", `found duplicate? ${isDuplicateEntry}`);
             if (!isDuplicateEntry) {
-                saveRaid(raider, currentChannel, OBSERVATION_ORIGINS.CHAT);
+                saveRaid(raider, currentChannel, OBSERVATION_ORIGINS.CHAT, raidMessage.viewers);
                 debugLog("passive_raid_tracker.js:handleAddedNode", `raid saved`);
             }
         });

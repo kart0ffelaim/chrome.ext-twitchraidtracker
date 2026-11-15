@@ -1,0 +1,8 @@
+{
+  "name": "twitch-raid-tracker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

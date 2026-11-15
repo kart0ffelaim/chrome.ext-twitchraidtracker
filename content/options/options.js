@@ -26,22 +26,29 @@ function bindCheckboxOption(elementId, optionName) {
     });
 }
 
-function bindNumberOption(elementId, optionName, displayName) {
+//confirmChange is optional: a function returning the question to ask before saving the value (or null to save without asking)
+function bindNumberOption(elementId, optionName, displayName, confirmChange) {
     const input = document.getElementById(elementId);
     const min = parseInt(input.min);
     let savedValue = option_defaults[optionName];
     chrome.storage.local.get([optionName], (result) => {
         debugLog(`options.js:${optionName}`, "loaded settings from storage", result);
-        savedValue = result[optionName] || option_defaults[optionName];
+        savedValue = result[optionName] ?? option_defaults[optionName];
         input.value = savedValue;
     });
-    input.addEventListener("change", () => {
-        const value = Number(input.value);
+    input.addEventListener("change", async () => {
+        const value = input.value.trim() === "" ? NaN : Number(input.value);
         if (!Number.isInteger(value) || value < min) {
             debugLog(`options.js:${optionName}`, `value ${input.value} is not a whole number >= ${min} -> no save`);
             statusText.textContent = `${displayName} must be a whole number >= ${min}! Save failed!`;
             input.value = savedValue;
             clearStatusTextLater();
+            return;
+        }
+        const question = confirmChange ? confirmChange(value) : null;
+        if (question && !await showConfirmationDialog(document.body, question)) {
+            debugLog(`options.js:${optionName}`, "User aborted");
+            input.value = savedValue;
             return;
         }
         const obj = {[optionName]: value};
@@ -56,6 +63,10 @@ function bindNumberOption(elementId, optionName, displayName) {
 bindCheckboxOption("debug-mode", "debugMode");
 bindCheckboxOption("track-passive", "trackPassiveRaids");
 bindCheckboxOption("show-passive-tooltip", "showPassiveRaidsOnTooltip");
+bindCheckboxOption("show-badge", "showBadge");
+bindNumberOption("retention-months", "retentionMonths", "Number of months", (months) => {
+    return months > 0 ? `Raids older than ${months} ${months === 1 ? "month" : "months"} are deleted now and in the future. Continue?` : null;
+});
 bindNumberOption("tooltip-item-number", "tooltipItemNumber", "Tooltip item number");
 bindNumberOption("overview-page-size", "overviewPageSize", "Overview page size");
 

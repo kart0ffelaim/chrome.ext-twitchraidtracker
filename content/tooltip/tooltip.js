@@ -5,7 +5,7 @@
         createRaidElement,
         debugLog,
         option_defaults,
-        OBSERVATION_ORIGINS
+        summarizeChannel
     } = await import(shared_js);
     debugLog("tooltip.js", "imported functions");
 
@@ -71,16 +71,24 @@
 
         const showPassiveRaids = result.showPassiveRaidsOnTooltip ?? option_defaults.showPassiveRaidsOnTooltip;
         const size = result.tooltipItemNumber || option_defaults.tooltipItemNumber;
-        const raids = (result.raids || [])
-            .filter(raid => String(raid.target).toLowerCase() === currentChannel && (showPassiveRaids || raid.dataOrigin !== OBSERVATION_ORIGINS.CHAT))
-            .reverse()
-            .slice(0, size);
-        debugLog('tooltip.js:mouseover-event-listener', `Raids were filtered so only the ${size} newest raids that targeted the channel ${currentChannel} are in it`, raids);
-        if (raids.length < 1) {
+        const summary = summarizeChannel(result.raids || [], currentChannel, showPassiveRaids);
+        const raids = summary.incoming.slice(0, size);
+        debugLog('tooltip.js:mouseover-event-listener', `the ${size} newest raids that targeted the channel ${currentChannel}`, raids);
+        if (summary.incoming.length < 1 && summary.outgoing.length < 1) {
             return;
         }
 
-        tooltip.replaceChildren(...raids.map(raid => createRaidElement(raid, false)));
+        const title = document.createElement("div");
+        title.className = "tooltip-title";
+        const titleParts = [];
+        if (summary.incoming.length > 0) {
+            titleParts.push(`Raided here ${summary.incoming.length}x`);
+        }
+        if (summary.outgoing.length > 0) {
+            titleParts.push(`raided away from here ${summary.outgoing.length}x`);
+        }
+        title.textContent = titleParts.join(" · ");
+        tooltip.replaceChildren(title, ...raids.map(raid => createRaidElement(raid)));
         positionTooltip(link);
         tooltip.classList.add("show-tooltip");
         debugLog('tooltip.js:mouseover-event-listener', "tooltip shown");

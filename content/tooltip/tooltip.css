@@ -23,8 +23,9 @@
 
 #raid-tracker-tooltip .tooltip-title {
     font-weight: bold;
-    color: #9146FF;
-    margin-bottom: 4px;
+    color: #bf94ff;
+    font-size: 12px;
+    margin-bottom: 2px;
 }
 
 #raid-tracker-tooltip .raid-item {

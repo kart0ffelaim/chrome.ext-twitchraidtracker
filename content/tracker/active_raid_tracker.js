@@ -1,4 +1,57 @@
-import {channelFromUrl, debugLog, saveRaid, OBSERVATION_ORIGINS} from "../shared.js";
+import {
+    channelFromUrl,
+    debugLog,
+    describeChannelSummary,
+    option_defaults,
+    saveRaid,
+    summarizeChannel,
+    updateRaids,
+    OBSERVATION_ORIGINS
+} from "../shared.js";
+
+const twitchTabsQuery = {url: "*://www.twitch.tv/*"};
+const defaultActionTitle = chrome.runtime.getManifest().name;
+
+//shows on the extension icon how often the user was raided to the channel viewed in the tab
+async function updateBadge(tabId, url) {
+    try {
+        const result = await chrome.storage.local.get(["raids", "showBadge", "showPassiveRaidsOnTooltip"]);
+        const channel = channelFromUrl(url);
+        let text = "";
+        let title = defaultActionTitle;
+        if (channel && (result.showBadge ?? option_defaults.showBadge)) {
+            const includeChatRaids = result.showPassiveRaidsOnTooltip ?? option_defaults.showPassiveRaidsOnTooltip;
+            const summary = summarizeChannel(result.raids || [], channel, includeChatRaids);
+            if (summary.incoming.length > 0) {
+                text = summary.incoming.length > 999 ? "999+" : String(summary.incoming.length);
+                title = `${channel}: ${describeChannelSummary(summary)}`;
+            }
+        }
+        await chrome.action.setBadgeText({tabId, text});
+        await chrome.action.setTitle({tabId, title});
+    } catch (err) {
+        //the tab may be closed already
+        debugLog("active_raid_tracker.js:updateBadge", `unable to update badge of tab ${tabId}`, err);
+    }
+}
+
+function updateAllBadges() {
+    chrome.tabs.query(twitchTabsQuery)
+        .then((tabs) => tabs.forEach((tab) => tab.id && updateBadge(tab.id, tab.url)))
+        .catch((err) => debugLog("active_raid_tracker.js:updateAllBadges", "unable to query open tabs", err));
+}
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local") {
+        return;
+    }
+    if (changes.raids || changes.showBadge || changes.showPassiveRaidsOnTooltip) {
+        updateAllBadges();
+    }
+    if (changes.retentionMonths) {
+        updateRaids((raids) => raids); //applies the new retention
+    }
+});
 
 function rememberChannel(tabId, channel) {
     const tabKey = `tab_${tabId}`;
@@ -8,7 +61,7 @@ function rememberChannel(tabId, channel) {
 
 //tabs that are already open when the extension gets installed, updated or the browser starts never fire a created event
 function rememberOpenTabs() {
-    chrome.tabs.query({url: "*://www.twitch.tv/*"})
+    chrome.tabs.query(twitchTabsQuery)
         .then((tabs) => {
             debugLog("active_raid_tracker.js:rememberOpenTabs", `found ${tabs.length} open twitch tabs`);
             tabs.forEach((tab) => {
@@ -16,13 +69,23 @@ function rememberOpenTabs() {
                 if (tab.id && currentChannel) {
                     rememberChannel(tab.id, currentChannel);
                 }
+                if (tab.id) {
+                    updateBadge(tab.id, tab.url);
+                }
             });
         })
         .catch((err) => debugLog("active_raid_tracker.js:rememberOpenTabs", "unable to query open tabs", err));
 }
 
-chrome.runtime.onInstalled.addListener(rememberOpenTabs);
-chrome.runtime.onStartup.addListener(rememberOpenTabs);
+chrome.runtime.onInstalled.addListener(() => {
+    chrome.action.setBadgeBackgroundColor({color: "#9146FF"});
+    rememberOpenTabs();
+});
+chrome.runtime.onStartup.addListener(() => {
+    chrome.action.setBadgeBackgroundColor({color: "#9146FF"});
+    rememberOpenTabs();
+    updateRaids((raids) => raids); //applies the retention
+});
 
 chrome.tabs.onCreated.addListener((tab) => {
     debugLog("active_raid_tracker.js:tab-created-listener", `received creation of tab`, tab);
@@ -42,6 +105,10 @@ chrome.tabs.onCreated.addListener((tab) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, _tab) => {
     debugLog("active_raid_tracker.js:tab-updated-listener", `received update on tab ${tabId}`, changeInfo, _tab);
+    //a page load resets the badge of the tab, so it is set again after the load too
+    if ((changeInfo.url || changeInfo.status === "complete") && _tab.url) {
+        updateBadge(tabId, _tab.url);
+    }
     if (!changeInfo.url) {
         debugLog("active_raid_tracker.js:tab-updated-listener", "update does not contain url");
         return;
