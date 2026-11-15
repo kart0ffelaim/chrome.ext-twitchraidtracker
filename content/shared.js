@@ -325,9 +325,12 @@ export function createRaidElement(raid, options = {}) {
 
     const channels = document.createElement("div");
     channels.className = "channels";
+    const arrow = document.createElement("span");
+    arrow.className = "arrow";
+    arrow.textContent = "→";
     channels.append(
         createChannelElement(raid.source, "source", options.links),
-        " -> ",
+        arrow,
         createChannelElement(raid.target, "target", options.links)
     );
 

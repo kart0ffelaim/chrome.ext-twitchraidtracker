@@ -2,60 +2,99 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
     <title>Raid Tracker</title>
+    <link href="theme.css" rel="stylesheet">
     <!--suppress CssUnusedSymbol -->
     <style>
         body {
-            width: 340px;
-            font-family: Arial, sans-serif;
-            padding: 10px;
-            background-color: #1f1f23;
-            color: #fff
+            width: 360px;
         }
 
-        [hidden] {
-            display: none !important;
+        header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        header img {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+        }
+
+        header h1 {
+            flex: 1;
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        .icon-btn {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            display: grid;
+            place-items: center;
+            background: none;
+            border-color: transparent;
+            color: var(--text-muted);
+        }
+
+        .icon-btn:hover:not(:disabled) {
+            background: var(--surface-raised);
+            border-color: transparent;
+            color: var(--text);
         }
 
         .tabs {
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 4px;
+            padding: 4px;
             margin-bottom: 12px;
-            border-bottom: 2px solid #9146FF;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
         }
 
         .tabs button {
             background: none;
-            color: #bbb;
-            border-radius: 4px 4px 0 0;
+            border-color: transparent;
+            color: var(--text-muted);
         }
 
         .tabs button:hover:not(:disabled) {
-            background: #333;
+            border-color: transparent;
+            color: var(--text);
         }
 
         .tabs button[aria-selected="true"] {
-            background: #9146FF;
-            color: white;
+            background: var(--accent);
+            color: var(--on-accent);
         }
 
         .channel-info {
-            border: 1px solid #9146FF;
-            border-radius: 4px;
-            padding: 8px;
+            padding: 10px 12px;
             margin-bottom: 12px;
+            border-color: transparent;
+            background: var(--accent-soft);
             font-size: 12px;
-            line-height: 1.4;
+            overflow-wrap: anywhere;
         }
 
         .channel-info .channel-name {
-            font-weight: bold;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-text);
         }
 
         .channel-info button {
-            margin-top: 6px;
-            padding: 4px 8px;
-            font-size: 11px;
+            margin-top: 8px;
+            padding: 4px 10px;
+            font-size: 12px;
         }
 
         .controls {
@@ -64,26 +103,30 @@
             margin-bottom: 12px;
         }
 
-        input, select {
-            padding: 6px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        .controls input {
             flex: 1;
-            min-width: 0;
+        }
+
+        #raid-list {
+            color: var(--text-muted);
         }
 
         .raid-item {
-            border-bottom: 1px solid #e5e5e5;
-            padding: 10px 0;
-            font-size: 13px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 8px;
+            padding: 9px 10px 9px 12px;
+            margin-bottom: 6px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            transition: border-color 0.12s;
         }
 
-        .raid-item:last-child {
-            border-bottom: none;
+        .raid-item:hover {
+            border-color: var(--text-muted);
         }
 
         .raid-text {
@@ -91,97 +134,118 @@
             overflow-wrap: anywhere;
         }
 
-        a {
-            color: #bf94ff;
-            text-decoration: none;
+        .channels {
+            font-weight: 600;
         }
 
-        a:hover {
-            text-decoration: underline;
+        .channels a {
+            color: var(--text);
+        }
+
+        .channels a:hover {
+            color: var(--accent-text);
+        }
+
+        .arrow {
+            margin: 0 6px;
+            color: var(--accent-text);
         }
 
         .time {
+            margin-top: 2px;
             font-size: 11px;
-            color: #999;
-            margin-top: 4px;
+            color: var(--text-muted);
         }
 
         .passive-warning {
-            color: #ff7a7a;
-        }
-
-        .pagination {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 15px;
-            font-size: 12px;
-        }
-
-        button {
-            padding: 6px 12px;
-            border: none;
-            background: #9146FF;
-            color: white;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        button:hover:not(:disabled) {
-            background: #772ce8;
+            margin-left: 4px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent-text);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
         .delete-btn {
             flex-shrink: 0;
             padding: 4px 8px;
             background: none;
-            color: #999;
+            border-color: transparent;
+            color: var(--text-muted);
             font-size: 11px;
+            opacity: 0;
+        }
+
+        .raid-item:hover .delete-btn, .delete-btn:focus-visible, .delete-btn.armed {
+            opacity: 1;
         }
 
         .delete-btn:hover:not(:disabled) {
-            background: #333;
-            color: #fff;
+            background: var(--surface-raised);
+            border-color: transparent;
+            color: var(--text);
         }
 
         .delete-btn.armed, .delete-btn.armed:hover:not(:disabled) {
-            background: #822;
-            color: #fff;
+            background: var(--danger);
+            color: var(--on-accent);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .pagination button {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            font-size: 15px;
+            line-height: 1;
         }
 
         .stat-tiles {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 8px;
-            margin-bottom: 4px;
         }
 
         .stat-tile {
-            flex: 1;
-            background: #2a2a2e;
-            border-radius: 4px;
-            padding: 8px;
+            padding: 10px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
         }
 
         .stat-value {
-            font-size: 20px;
-            font-weight: bold;
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.1;
+            font-variant-numeric: tabular-nums;
         }
 
         .stat-label {
-            font-size: 11px;
-            color: #bbb;
             margin-top: 2px;
+            font-size: 11px;
+            color: var(--text-muted);
         }
 
         h4 {
-            margin: 16px 0 6px 0;
-            font-size: 13px;
+            margin: 18px 0 6px 0;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
         }
 
         .bar-row {
@@ -189,12 +253,14 @@
             grid-template-columns: 110px 1fr 32px;
             align-items: center;
             gap: 8px;
+            padding: 4px 6px;
+            margin: 0 -6px;
+            border-radius: var(--radius-small);
             font-size: 12px;
-            padding: 3px 0;
         }
 
         .bar-row:hover {
-            background: #2a2a2e;
+            background: var(--surface-raised);
         }
 
         .bar-label {
@@ -206,7 +272,7 @@
         .bar {
             height: 8px;
             min-width: 2px;
-            background: #9146FF;
+            background: var(--accent);
             border-radius: 0 4px 4px 0;
         }
 
@@ -216,23 +282,39 @@
 
         .bar-value {
             text-align: right;
-            color: #bbb;
+            color: var(--text-muted);
             font-variant-numeric: tabular-nums;
         }
 
-        .stats-empty {
-            font-size: 12px;
-            color: #bbb;
+        .stats-empty, #stats-view {
+            color: var(--text-muted);
+        }
+
+        #stats-view .stat-tiles, #stats-view .bar-row {
+            color: var(--text);
         }
     </style>
 </head>
 <body>
+<header>
+    <img alt="" src="../images/icon48.png">
+    <h1>Raid Tracker</h1>
+    <button aria-label="Open settings" class="icon-btn" id="options-btn" title="Settings">
+        <svg aria-hidden="true" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16">
+            <path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h8M16 18h4"/>
+            <circle cx="16" cy="6" r="2"/>
+            <circle cx="8" cy="12" r="2"/>
+            <circle cx="14" cy="18" r="2"/>
+        </svg>
+    </button>
+</header>
+
 <div class="tabs" role="tablist">
     <button aria-selected="true" id="history-tab" role="tab">History</button>
     <button aria-selected="false" id="stats-tab" role="tab">Stats</button>
 </div>
 
-<div class="channel-info" hidden id="channel-info">
+<div class="card channel-info" hidden id="channel-info">
     <div><span class="channel-name" id="channel-info-name"></span></div>
     <div id="channel-info-text"></div>
     <button id="channel-info-filter">Show raids of this channel</button>
@@ -254,9 +336,9 @@
     <div id="raid-list">Loading...</div>
 
     <div class="pagination">
-        <button id="prev-btn">&lt;&lt;</button>
+        <button aria-label="Previous page" id="prev-btn">&lsaquo;</button>
         <span id="page-info">1</span>
-        <button id="next-btn">&gt;&gt;</button>
+        <button aria-label="Next page" id="next-btn">&rsaquo;</button>
     </div>
 </div>
 

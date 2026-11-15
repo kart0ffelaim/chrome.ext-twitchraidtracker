@@ -18,6 +18,8 @@ before.
     - Summary of the channel you are currently watching.
 - **Data management**: export and import the raids as JSON, delete everything, optional automatic deletion of old raids.
 
+Popup and options follow the light or dark setting of your browser.
+
 All data stays in the local storage of your browser. Nothing is sent anywhere.
 
 ## Installation
@@ -30,17 +32,17 @@ The extension is loaded unpacked:
 
 ## Options
 
-Open the options through the extension details or a right click on the extension icon.
+Open the options with the button in the top right corner of the popup.
 
 | Option | Default | Description |
 |---|---|---|
-| Enable Debug Logging | off | Writes detailed logs to the console of the page, popup and service worker. |
-| Track incoming raids to viewed channel | off | Detects raids from the raid message in chat. |
-| Show incoming raids in tooltip | off | Raids seen in chat also count for the tooltip and the badge. |
-| Show raid count on the extension icon | on | Badge with the number of raids to the viewed channel. |
-| Items in on-site tooltip | 5 | Number of raids listed in the tooltip. |
-| Items per page in overview | 15 | Page size of the history in the popup. |
-| Months until raids are deleted | 0 | Raids older than this are deleted, 0 keeps them forever. |
+| Track raids seen in chat | off | Detects raids arriving at the channel you are watching from the raid message in chat. |
+| Delete old raids after | 0 | Raids older than this number of months are deleted, 0 keeps them forever. |
+| Count raids seen in chat | off | Raids seen in chat also count for the tooltip and the badge. |
+| Raid count on the extension icon | on | Badge with the number of raids to the channel of the current tab. |
+| Raids in the tooltip on twitch.tv | 5 | Number of raids listed in the tooltip. |
+| Raids per page in the popup | 15 | Page size of the history in the popup. |
+| Debug logging | off | Writes detailed logs to the console of the page, popup and service worker. |
 
 ### Raids seen in chat
 
@@ -87,6 +89,7 @@ npm test
 | `content/popup.html`, `content/popup.js` | Popup with history and stats. |
 | `content/options/` | Options page. |
 | `content/shared.js` | Shared functions and defaults. |
+| `content/theme.css` | Colors and basic styles of popup and options page. |
 | `other_resources/dummy_raid_data_bkp.json` | Example data for the import. |
 
 ## License

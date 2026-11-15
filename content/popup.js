@@ -207,6 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
         loadRaids();
     }
 
+    document.getElementById("options-btn").addEventListener("click", () => chrome.runtime.openOptionsPage());
     historyTab.addEventListener("click", () => selectView(false));
     statsTab.addEventListener("click", () => selectView(true));
 
