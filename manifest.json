@@ -10,7 +10,6 @@
   },
   "description": "Tracks raids so the user can see if and how the user got to a channel before through a raid",
   "permissions": [
-    "tabs",
     "storage"
   ],
   "host_permissions": [

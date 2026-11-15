@@ -1,54 +1,76 @@
+/* injected into twitch.tv, so every selector is scoped to the tooltip */
 #raid-tracker-tooltip {
     position: fixed;
-    background-color: #1f1f23;
-    color: #efeff1;
+    min-width: 200px;
     padding: 10px 12px;
-    border-radius: 6px;
-    border: 1px solid #9146ff;
-    font-size: 13px;
+    background-color: #1c1c21;
+    color: #f1f1f4;
+    border: 1px solid #32323b;
+    border-top: 2px solid #9146ff;
+    border-radius: 10px;
     font-family: inherit;
+    font-size: 13px;
+    line-height: 1.4;
     z-index: 999999;
     pointer-events: none;
     visibility: hidden;
     opacity: 0;
-    transition: opacity 0.1s ease-in-out;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    transform: translateY(4px);
+    transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     white-space: nowrap;
 }
 
 #raid-tracker-tooltip.show-tooltip {
     visibility: visible;
     opacity: 1;
+    transform: none;
 }
 
 #raid-tracker-tooltip .tooltip-title {
-    font-weight: bold;
-    color: #9146FF;
-    margin-bottom: 4px;
-}
-
-.raid-item {
-    border-bottom: 1px solid #eee;
-    padding: 8px 0;
-    font-size: 14px;
-}
-
-.raid-item:last-child {
-    border-bottom: none;
-}
-
-.time {
+    margin-bottom: 2px;
     font-size: 11px;
-    color: #bbb;
-    margin-top: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #c4a1ff;
 }
 
-.source {
-    color: #9146FF;
-    font-weight: bold;
+#raid-tracker-tooltip .raid-item {
+    padding: 7px 0;
+    border-bottom: 1px solid #32323b;
 }
 
-.target {
-    color: #fff;
-    font-weight: bold;
+#raid-tracker-tooltip .raid-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+#raid-tracker-tooltip .channels {
+    font-weight: 600;
+}
+
+#raid-tracker-tooltip .source {
+    color: #c4a1ff;
+}
+
+#raid-tracker-tooltip .target {
+    color: #f1f1f4;
+}
+
+#raid-tracker-tooltip .arrow {
+    margin: 0 6px;
+    color: #a3a3b0;
+}
+
+#raid-tracker-tooltip .time {
+    margin-top: 1px;
+    font-size: 11px;
+    color: #a3a3b0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #raid-tracker-tooltip {
+        transition: none;
+    }
 }

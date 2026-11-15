@@ -1,0 +1,173 @@
+/* shared design of the popup and the options page, follows the light/dark setting of the browser */
+:root {
+    color-scheme: dark;
+    --bg: #121214;
+    --surface: #1c1c21;
+    --surface-raised: #26262d;
+    --border: #32323b;
+    --text: #f1f1f4;
+    --text-muted: #a3a3b0;
+    --accent: #9146ff;
+    --accent-hover: #a66bff;
+    --accent-soft: rgba(145, 70, 255, 0.16);
+    --accent-text: #c4a1ff;
+    --on-accent: #ffffff;
+    --danger: #e5484d;
+    --danger-hover: #f2555a;
+    --danger-soft: rgba(229, 72, 77, 0.16);
+    --danger-text: #ff8589;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --radius: 10px;
+    --radius-small: 6px;
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        color-scheme: light;
+        --bg: #f6f6f8;
+        --surface: #ffffff;
+        --surface-raised: #eeeef2;
+        --border: #dedee5;
+        --text: #18181b;
+        --text-muted: #62626f;
+        --accent: #7c3aed;
+        --accent-hover: #6a2bd9;
+        --accent-soft: rgba(124, 58, 237, 0.1);
+        --accent-text: #6a2bd9;
+        --danger: #d1343a;
+        --danger-hover: #b9282e;
+        --danger-soft: rgba(209, 52, 58, 0.1);
+        --danger-text: #b9282e;
+        --shadow: 0 8px 24px rgba(24, 24, 27, 0.16);
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+body {
+    margin: 0;
+    padding: 14px;
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text);
+    background: var(--bg);
+}
+
+a {
+    color: var(--accent-text);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+button {
+    font: inherit;
+    font-weight: 600;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--surface-raised);
+    color: var(--text);
+    cursor: pointer;
+    transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+
+button:hover:not(:disabled) {
+    border-color: var(--text-muted);
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+}
+
+button.primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+button.danger, dialog button[type="submit"] {
+    background: var(--danger-soft);
+    border-color: transparent;
+    color: var(--danger-text);
+}
+
+button.danger:hover:not(:disabled), dialog button[type="submit"]:hover:not(:disabled) {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--on-accent);
+}
+
+input[type="text"], input[type="number"], select {
+    font: inherit;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--surface);
+    color: var(--text);
+    min-width: 0;
+}
+
+input::placeholder {
+    color: var(--text-muted);
+}
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+dialog {
+    width: 300px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow);
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+}
+
+dialog p {
+    margin: 0 0 16px 0;
+    font-size: 14px;
+}
+
+dialog button {
+    min-width: 96px;
+    margin: 12px 4px 0 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+        animation-duration: 0.01s !important;
+    }
+}
