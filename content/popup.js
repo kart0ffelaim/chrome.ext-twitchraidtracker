@@ -1,4 +1,4 @@
-import {debugLog, OBSERVATION_ORIGINS, option_defaults} from "./shared.js";
+import {createRaidElement, debugLog, option_defaults} from "./shared.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     debugLog("popup.js", "DOMContentLoaded event received");
@@ -12,100 +12,77 @@ document.addEventListener("DOMContentLoaded", () => {
     const nextBtn = document.getElementById("next-btn");
     const pageInfo = document.getElementById("page-info");
 
+    function showEmptyList(message) {
+        raidList.textContent = message;
+        pageInfo.textContent = "0/0";
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+    }
+
     function loadRaids() {
-        chrome.storage.local.get(["raids"], (result) => {
+        chrome.storage.local.get(["raids", "overviewPageSize"], (result) => {
             debugLog("popup.js:loadRaids", `Raids loaded from storage`, result);
             let raids = result.raids || [];
             if (raids.length === 0) {
-                raidList.innerHTML = "No raids tracked yet. Watch some streams and raid somebody!";
-                pageInfo.textContent = "0/0";
-                prevBtn.disabled = true;
-                nextBtn.disabled = true;
+                showEmptyList("No raids tracked yet. Watch some streams and raid somebody!");
                 debugLog("popup.js:loadRaids", "No raids -> No content");
                 return;
             }
 
-            const searchTerm = searchInput.value.toLowerCase();
+            const searchTerm = searchInput.value.trim().toLowerCase();
             const period = periodFilter.value;
             const now = new Date();
 
             debugLog("popup.js:loadRaids", `filtering raids (search term: ${searchTerm}; period: ${period})`);
             raids = raids.filter(raid => {
-                const matchesSearch = searchTerm.length < 1 || raid.source.toLowerCase().includes(searchTerm) || raid.target.toLowerCase().includes(searchTerm);
+                const matchesSearch = searchTerm.length < 1 || String(raid.source).toLowerCase().includes(searchTerm) || String(raid.target).toLowerCase().includes(searchTerm);
                 let matchesPeriod;
                 if (period === "all") {
-                    debugLog("popup.js:loadRaids", "period is all");
                     matchesPeriod = true;
                 } else {
-                    const rdt = new Date(raid.timestamp);
-                    const diff = (now - rdt) / (1000 * 60 * 60);
+                    const diff = (now - new Date(raid.timestamp)) / (1000 * 60 * 60);
                     matchesPeriod = diff <= parseInt(period);
-                    debugLog("popup.js:loadRaids", `period is ${parseInt(period)}h, raid date was ${rdt}, time diff is ${diff}`);
                 }
-                debugLog("popup.js:loadRaids", `raid matches search? ${matchesSearch} | matches period? ${matchesPeriod}`);
                 return matchesSearch && matchesPeriod;
             });
             debugLog("popup.js:loadRaids", `filtered raids (new count: ${raids.length})`, raids);
 
-            chrome.storage.local.get(["overviewPageSize"], (result) => {
-                const pageSize = result.overviewPageSize || option_defaults.overviewPageSize;
-                debugLog("popup.js:loadRaids", `page size is ${pageSize}`);
-                totalPages = Math.ceil(raids.length / pageSize) || 1;
-                if (currentPage > totalPages) currentPage = 1;
+            if (raids.length < 1) {
+                showEmptyList("No raids match your criteria.");
+                debugLog("popup.js:loadRaids", "No raids after filter -> No content");
+                return;
+            }
 
-                if (raids.length < 1) {
-                    raidList.innerHTML = "No raids match your criteria.";
-                    pageInfo.textContent = "0/0";
-                    prevBtn.disabled = true;
-                    nextBtn.disabled = true;
-                    debugLog("popup.js:loadRaids", "No raids after filter -> No content");
-                    return;
-                }
+            //newest raids first, so the first page shows the latest raids
+            raids.sort((raidA, raidB) => new Date(raidB.timestamp) - new Date(raidA.timestamp));
 
-                const startIndex = (currentPage - 1) * pageSize;
-                raids = raids.splice(startIndex, startIndex + pageSize);
-                debugLog("popup.js:loadRaids", `rendering page ${currentPage} (start at ${startIndex}, size ${pageSize})of ${totalPages}`);
+            const pageSize = result.overviewPageSize || option_defaults.overviewPageSize;
+            debugLog("popup.js:loadRaids", `page size is ${pageSize}`);
+            totalPages = Math.ceil(raids.length / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
 
-                raidList.innerHTML = "";
-                raids.reverse().forEach(raid => {
-                    const div = document.createElement("div");
-                    div.className = "raid-item";
-                    let warning_text = "";
-                    if (raid.dataOrigin && raid.dataOrigin === OBSERVATION_ORIGINS.CHAT) {
-                        warning_text = ` <span class="passive-warning">${raid.dataOrigin}</span>`
-                    }
-                    div.innerHTML = `
-                    <div>
-                        <span>${raid.source}</span> -> <span>${raid.target}</span>
-                    </div>                
-                    <div class="time">${new Date(raid.timestamp).toLocaleString(undefined, {
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit"
-                    })}${warning_text}</div>
-                `;
-                    raidList.appendChild(div);
-                    debugLog("popup.js:loadRaids", `Processed raid`, raid);
-                });
+            const startIndex = (currentPage - 1) * pageSize;
+            raids = raids.slice(startIndex, startIndex + pageSize);
+            debugLog("popup.js:loadRaids", `rendering page ${currentPage} (start at ${startIndex}, size ${pageSize}) of ${totalPages}`);
 
-                pageInfo.textContent = `${currentPage} / ${totalPages}`;
-                prevBtn.disabled = currentPage === 1;
-                nextBtn.disabled = currentPage === totalPages;
-                debugLog("popup.js:loadRaids", "Raids loaded, filtered, paged and rendered.");
-            });
+            raidList.replaceChildren(...raids.map(raid => createRaidElement(raid, true)));
+
+            pageInfo.textContent = `${currentPage} / ${totalPages}`;
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+            debugLog("popup.js:loadRaids", "Raids loaded, filtered, paged and rendered.");
         });
     }
 
     searchInput.addEventListener("input", () => {
         debugLog("popup.js:sinput-event-listener", "got event on search input");
+        currentPage = 1;
         loadRaids();
     });
 
     periodFilter.addEventListener("change", () => {
         debugLog("popup.js:change-event-listener", "got event on period select");
+        currentPage = 1;
         loadRaids();
     });
 
